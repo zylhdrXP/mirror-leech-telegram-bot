@@ -5,7 +5,7 @@ from json import loads
 from lxml.etree import HTML
 from os import path as ospath
 from re import findall, match, search
-from requests import Session, post, get
+from requests import Session, post, get, head
 from requests.adapters import HTTPAdapter
 from time import sleep, time
 from urllib.parse import parse_qs, urlparse, quote
@@ -64,7 +64,7 @@ def direct_link_generator(link):
         return hxfile(link)
     elif "1drv.ms" in domain:
         return onedrive(link)
-    elif any(x in domain for x in ["pixeldrain.com", "pixeldra.in"]):
+    elif any(x in domain for x in ["pixeldrain.com", "pixeldra.in", "pixeldrain-bypass.gamedrive.org", "pixeldrain.eu.cc"]):
         return pixeldrain(link)
     elif "racaty" in domain:
         return racaty(link)
@@ -725,9 +725,16 @@ def onedrive(link):
 def pixeldrain(url):
     try:
         url = url.rstrip("/")
-        code = url.split("/")[-1].split("?", 1)[0]
-        response = get("https://cdn.pixeldrain.eu.cc/", allow_redirects=True)
-        return response.url + code
+        match = search(r"/(?:u|d|api/file)/([a-zA-Z0-9_-]+)", url)
+        code = match.group(1) if match else url.split("/")[-1].split("?", 1)[0]
+        bypass_url = f"https://cdn.pixeldrain.eu.cc/{code}"
+        try:
+            resp = head(bypass_url, allow_redirects=False, timeout=10)
+            if resp.status_code == 302 and (loc := resp.headers.get("Location")):
+                return loc
+            return bypass_url
+        except Exception:
+            return f"https://pixeldrain.com/api/file/{code}?download"
     except Exception as e:
         raise DirectDownloadLinkException("ERROR: Direct link not found") from e
 
