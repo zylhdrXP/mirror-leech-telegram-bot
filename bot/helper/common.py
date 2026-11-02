@@ -153,6 +153,10 @@ class TaskConfig:
             and not dest.startswith("tp:")
         ):
             return "accounts"
+        elif ospath.exists("token.pickle"):
+            return "token.pickle"
+        elif ospath.exists(f"tokens/{Config.OWNER_ID}.pickle"):
+            return f"tokens/{Config.OWNER_ID}.pickle"
         else:
             return "token.pickle"
 

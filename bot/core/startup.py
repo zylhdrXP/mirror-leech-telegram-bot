@@ -266,6 +266,13 @@ async def load_configurations():
         async with aiopen(".netrc", "w"):
             pass
 
+    if not await aiopath.exists("token.pickle") and await aiopath.exists(f"tokens/{Config.OWNER_ID}.pickle"):
+        try:
+            await (await create_subprocess_shell(f"cp tokens/{Config.OWNER_ID}.pickle token.pickle")).wait()
+            LOGGER.info("Copied tokens/%s.pickle to token.pickle for global use", Config.OWNER_ID)
+        except Exception:
+            pass
+
     netrc_dest = ospath.expanduser("~/.netrc")
     await (
         await create_subprocess_shell(

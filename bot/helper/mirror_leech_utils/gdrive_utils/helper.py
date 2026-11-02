@@ -83,6 +83,10 @@ class GoogleDriveHelper:
             LOGGER.info(f"Authorize with {self.token_path}")
             with open(self.token_path, "rb") as f:
                 credentials = pload(f)
+        elif ospath.exists(f"tokens/{Config.OWNER_ID}.pickle"):
+            LOGGER.info(f"Authorize with tokens/{Config.OWNER_ID}.pickle")
+            with open(f"tokens/{Config.OWNER_ID}.pickle", "rb") as f:
+                credentials = pload(f)
         else:
             LOGGER.error("token.pickle not found!")
         authorized_http = AuthorizedHttp(credentials, http=build_http())
