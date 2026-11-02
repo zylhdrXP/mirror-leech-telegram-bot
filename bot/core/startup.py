@@ -1,8 +1,9 @@
 from aiofiles.os import path as aiopath, remove, makedirs
 from aiofiles import open as aiopen
 from aioshutil import rmtree
-from asyncio import create_subprocess_exec, create_subprocess_shell, sleep
+from asyncio import create_subprocess_exec, create_subprocess_shell, sleep, wait_for
 from importlib import import_module
+from os import path as ospath
 
 from .. import (
     aria2_options,
@@ -28,40 +29,53 @@ from .torrent_manager import TorrentManager
 
 async def update_qb_options():
     LOGGER.info("Get qBittorrent options from server")
-    if not qbit_options:
-        opt = await TorrentManager.qbittorrent.app.preferences()
-        qbit_options.update(opt)
-        del qbit_options["listen_port"]
-        for k in list(qbit_options.keys()):
-            if k.startswith("rss"):
-                del qbit_options[k]
-        qbit_options["web_ui_password"] = "mltbmltb"
-        await TorrentManager.qbittorrent.app.set_preferences(
-            {"web_ui_password": "mltbmltb"}
-        )
-    else:
-        await TorrentManager.qbittorrent.app.set_preferences(qbit_options)
+    try:
+        if not qbit_options:
+            opt = await wait_for(TorrentManager.qbittorrent.app.preferences(), timeout=5)
+            qbit_options.update(opt)
+            del qbit_options["listen_port"]
+            for k in list(qbit_options.keys()):
+                if k.startswith("rss"):
+                    del qbit_options[k]
+            qbit_options["web_ui_password"] = "mltbmltb"
+            await wait_for(
+                TorrentManager.qbittorrent.app.set_preferences(
+                    {"web_ui_password": "mltbmltb"}
+                ),
+                timeout=5,
+            )
+        else:
+            await wait_for(
+                TorrentManager.qbittorrent.app.set_preferences(qbit_options), timeout=5
+            )
+        LOGGER.info("qBittorrent options loaded successfully")
+    except Exception as e:
+        LOGGER.error(f"Failed to get/set qBittorrent options: {e}")
 
 
 async def update_aria2_options():
     LOGGER.info("Get aria2 options from server")
-    if not aria2_options:
-        op = await TorrentManager.aria2.getGlobalOption()
-        aria2_options.update(op)
-    else:
-        await TorrentManager.aria2.changeGlobalOption(aria2_options)
+    try:
+        if not aria2_options:
+            op = await wait_for(TorrentManager.aria2.getGlobalOption(), timeout=5)
+            aria2_options.update(op)
+        else:
+            await wait_for(
+                TorrentManager.aria2.changeGlobalOption(aria2_options), timeout=5
+            )
+        LOGGER.info("aria2 options loaded successfully")
+    except Exception as e:
+        LOGGER.error(f"Failed to get/set aria2 options: {e}")
 
 
 async def update_nzb_options():
     LOGGER.info("Get SABnzbd options from server")
-    while True:
-        try:
-            no = (await sabnzbd_client.get_config())["config"]["misc"]
-            nzb_options.update(no)
-        except:
-            await sleep(0.5)
-            continue
-        break
+    try:
+        no = (await wait_for(sabnzbd_client.get_config(), timeout=3))["config"]["misc"]
+        nzb_options.update(no)
+        LOGGER.info("SABnzbd options loaded successfully")
+    except Exception:
+        LOGGER.info("SABnzbd is not running, skipping NZB options.")
 
 
 async def load_settings():
@@ -252,11 +266,13 @@ async def load_configurations():
         async with aiopen(".netrc", "w"):
             pass
 
+    netrc_dest = ospath.expanduser("~/.netrc")
     await (
         await create_subprocess_shell(
-            "chmod 600 .netrc && cp .netrc /root/.netrc && chmod +x aria-nox-nzb.sh && ./aria-nox-nzb.sh"
+            f"chmod 600 .netrc; cp -f .netrc '{netrc_dest}' 2>/dev/null || true; chmod +x aria-nox-nzb.sh && ./aria-nox-nzb.sh"
         )
     ).wait()
+    await sleep(1)
 
     if Config.BASE_URL:
         await create_subprocess_shell(

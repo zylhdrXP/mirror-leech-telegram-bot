@@ -1,3 +1,4 @@
+from os import path
 from time import time
 
 from ..helper.ext_utils.bot_utils import new_task
@@ -40,3 +41,5 @@ async def ping(_, message):
 @new_task
 async def log(_, message):
     await send_file(message, "log.txt")
+    if path.exists("error.log"):
+        await send_file(message, "error.log")

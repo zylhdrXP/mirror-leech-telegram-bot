@@ -1,6 +1,6 @@
 from aioaria2 import Aria2WebsocketClient
 from aioqbt.client import create_client
-from asyncio import gather, TimeoutError
+from asyncio import gather, TimeoutError, sleep
 from aiohttp import ClientError
 from pathlib import Path
 from inspect import iscoroutinefunction
@@ -39,10 +39,17 @@ class TorrentManager:
 
     @classmethod
     async def initiate(cls):
-        cls.aria2, cls.qbittorrent = await gather(
-            Aria2WebsocketClient.new("http://localhost:6800/jsonrpc"),
-            create_client("http://localhost:8090/api/v2/"),
-        )
+        for retry_count in range(10):
+            try:
+                cls.aria2, cls.qbittorrent = await gather(
+                    Aria2WebsocketClient.new("http://localhost:6800/jsonrpc"),
+                    create_client("http://localhost:8090/api/v2/"),
+                )
+                break
+            except Exception as e:
+                if retry_count == 9:
+                    raise
+                await sleep(1)
         cls.qbittorrent = wrap_with_retry(cls.qbittorrent)
 
     @classmethod

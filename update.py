@@ -1,3 +1,4 @@
+import sys
 from sys import exit
 from importlib import import_module
 from logging import (
@@ -9,6 +10,7 @@ from logging import (
     info as log_info,
     getLogger,
     ERROR,
+    Formatter,
 )
 from os import path, remove, getenv
 from pymongo.mongo_client import MongoClient
@@ -25,11 +27,30 @@ if path.exists("log.txt"):
 if path.exists("rlog.txt"):
     remove("rlog.txt")
 
+if path.exists("error.log"):
+    remove("error.log")
+
+err_handler = FileHandler("error.log", delay=True)
+err_handler.setLevel(ERROR)
+err_handler.setFormatter(
+    Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+)
+
 basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[FileHandler("log.txt"), StreamHandler()],
+    handlers=[FileHandler("log.txt"), StreamHandler(), err_handler],
     level=INFO,
 )
+
+
+def uncaught_exception_handler(exc_type, exc_value, exc_traceback):
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+    log_error("Uncaught exception:", exc_info=(exc_type, exc_value, exc_traceback))
+
+
+sys.excepthook = uncaught_exception_handler
 
 
 def load_config() -> Dict[str, Any]:

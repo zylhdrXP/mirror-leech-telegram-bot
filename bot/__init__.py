@@ -3,6 +3,7 @@ from uvloop import install
 install()
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from asyncio import Lock, new_event_loop, set_event_loop
+import sys
 from logging import (
     getLogger,
     FileHandler,
@@ -11,10 +12,11 @@ from logging import (
     basicConfig,
     WARNING,
     ERROR,
+    Formatter,
 )
 from sabnzbdapi import SabnzbdClient
 from time import time
-from os import cpu_count
+from os import cpu_count, path, remove
 
 getLogger("requests").setLevel(WARNING)
 getLogger("urllib3").setLevel(WARNING)
@@ -28,18 +30,34 @@ bot_start_time = time()
 bot_loop = new_event_loop()
 set_event_loop(bot_loop)
 
+err_handler = FileHandler("error.log", delay=True)
+err_handler.setLevel(ERROR)
+err_handler.setFormatter(
+    Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+)
+
 basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[FileHandler("log.txt"), StreamHandler()],
+    handlers=[FileHandler("log.txt"), StreamHandler(), err_handler],
     level=INFO,
 )
 
 LOGGER = getLogger(__name__)
+
+
+def uncaught_exception_handler(exc_type, exc_value, exc_traceback):
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+    LOGGER.error("Uncaught exception:", exc_info=(exc_type, exc_value, exc_traceback))
+
+
+sys.excepthook = uncaught_exception_handler
 cpu_no = cpu_count()
 threads = max(1, cpu_no // 2)
 cores = ",".join(str(i) for i in reversed(range(threads)))
 
-DOWNLOAD_DIR = "/app/downloads/"
+DOWNLOAD_DIR = f"{path.abspath('.')}/downloads/"
 intervals = {"status": {}, "qb": "", "jd": "", "nzb": "", "stopAll": False}
 qb_torrents = {}
 jd_downloads = {}

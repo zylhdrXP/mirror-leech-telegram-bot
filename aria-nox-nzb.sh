@@ -1,3 +1,6 @@
+#!/bin/bash
+export PATH="$(pwd)/bin:$PATH"
+
 tracker_list=$(curl -Ns https://ngosang.github.io/trackerslist/trackers_all_http.txt | awk '$0' | tr '\n\n' ',')
 aria2c --allow-overwrite=true --auto-file-renaming=true --bt-enable-lpd=true --bt-detach-seed-only=true \
        --bt-remove-unselected-file=true --bt-tracker="[$tracker_list]" --bt-max-peers=0 --enable-rpc=true \
@@ -7,5 +10,7 @@ aria2c --allow-overwrite=true --auto-file-renaming=true --bt-enable-lpd=true --b
        --http-accept-gzip=true --max-file-not-found=0 --max-tries=20  --peer-id-prefix=-qB4520- --reuse-uri=true \
        --content-disposition-default-utf8=true --user-agent=Wget/1.12 --peer-agent=qBittorrent/4.5.2 --quiet=true \
        --summary-interval=0 --max-upload-limit=1K
-qbittorrent-nox -d --profile="$(pwd)"
-sabnzbdplus -f sabnzbd/SABnzbd.ini -s :::8070 -b 0 -d -c -l 0 --console
+qbittorrent-nox -d --confirm-legal-notice --profile="$(pwd)"
+if command -v sabnzbdplus >/dev/null 2>&1; then
+    sabnzbdplus -f sabnzbd/SABnzbd.ini -s :::8070 -b 0 -d -c -l 0 --console
+fi

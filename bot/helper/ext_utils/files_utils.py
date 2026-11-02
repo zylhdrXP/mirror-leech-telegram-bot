@@ -2,7 +2,11 @@ from aioshutil import rmtree as aiormtree, move
 from asyncio import create_subprocess_exec, wait_for
 from asyncio.subprocess import PIPE
 from shlex import quote as shlex_quote
-from magic import Magic
+import mimetypes
+try:
+    from magic import Magic
+except ImportError:
+    Magic = None
 from os import walk, path as ospath, readlink
 from re import split as re_split, I, search as re_search, escape
 from aiofiles.os import (
@@ -245,10 +249,16 @@ async def create_recursive_symlink(source, destination):
 def get_mime_type(file_path):
     if ospath.islink(file_path):
         file_path = readlink(file_path)
-    mime = Magic(mime=True)
-    mime_type = mime.from_file(file_path)
-    mime_type = mime_type or "text/plain"
-    return mime_type
+    if Magic is not None:
+        try:
+            mime = Magic(mime=True)
+            mime_type = mime.from_file(file_path)
+            if mime_type:
+                return mime_type
+        except Exception:
+            pass
+    mime_type, _ = mimetypes.guess_type(file_path)
+    return mime_type or "application/octet-stream"
 
 
 async def remove_excluded_files(fpath, ee):

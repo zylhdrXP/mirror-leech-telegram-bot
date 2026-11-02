@@ -9,7 +9,7 @@ from asyncio import (
 )
 from functools import partial
 from io import BytesIO
-from os import getcwd
+from os import getcwd, path as ospath
 from pyrogram.filters import create
 from pyrogram.handlers import MessageHandler
 from time import time
@@ -459,7 +459,8 @@ async def update_private_file(_, message, pre_message):
         elif file_name in {".netrc", "netrc"}:
             await (await create_subprocess_exec("touch", ".netrc")).wait()
             await (await create_subprocess_exec("chmod", "600", ".netrc")).wait()
-            await (await create_subprocess_exec("cp", ".netrc", "/root/.netrc")).wait()
+            netrc_dest = ospath.expanduser("~/.netrc")
+            await (await create_subprocess_shell(f"cp -f .netrc '{netrc_dest}' 2>/dev/null || true")).wait()
         await delete_message(message)
     elif doc := message.document:
         file_name = doc.file_name
@@ -503,7 +504,8 @@ async def update_private_file(_, message, pre_message):
                 await rename("netrc", ".netrc")
                 file_name = ".netrc"
             await (await create_subprocess_exec("chmod", "600", ".netrc")).wait()
-            await (await create_subprocess_exec("cp", ".netrc", "/root/.netrc")).wait()
+            netrc_dest = ospath.expanduser("~/.netrc")
+            await (await create_subprocess_shell(f"cp -f .netrc '{netrc_dest}' 2>/dev/null || true")).wait()
         elif file_name == "config.py":
             await load_config()
         if "@github.com" in Config.UPSTREAM_REPO:
