@@ -145,7 +145,7 @@ class TaskConfig:
         ]
 
     def get_token_path(self, dest):
-        if dest.startswith("mt:"):
+        if dest.startswith("mt:") and ospath.exists(f"tokens/{self.user_id}.pickle"):
             return f"tokens/{self.user_id}.pickle"
         elif (
             dest.startswith("sa:")
@@ -157,9 +157,9 @@ class TaskConfig:
             return "token.pickle"
 
     def get_config_path(self, dest):
-        return (
-            f"rclone/{self.user_id}.conf" if dest.startswith("mt:") else "rclone.conf"
-        )
+        if dest.startswith("mt:") and ospath.exists(f"rclone/{self.user_id}.conf"):
+            return f"rclone/{self.user_id}.conf"
+        return "rclone.conf"
 
     async def is_token_exists(self, path, status):
         if is_rclone_path(path):
@@ -208,15 +208,19 @@ class TaskConfig:
         if self.link not in ["rcl", "gdl"]:
             if not self.is_jd:
                 if is_rclone_path(self.link):
-                    if not self.link.startswith("mt:") and self.user_dict.get(
-                        "USER_TOKENS", False
+                    if (
+                        not self.link.startswith("mt:")
+                        and self.user_dict.get("USER_TOKENS", False)
+                        and ospath.exists(f"rclone/{self.user_id}.conf")
                     ):
                         self.link = f"mt:{self.link}"
                     await self.is_token_exists(self.link, "dl")
                 elif is_gdrive_link(self.link):
-                    if not self.link.startswith(
-                        ("mt:", "tp:", "sa:")
-                    ) and self.user_dict.get("USER_TOKENS", False):
+                    if (
+                        not self.link.startswith(("mt:", "tp:", "sa:"))
+                        and self.user_dict.get("USER_TOKENS", False)
+                        and ospath.exists(f"tokens/{self.user_id}.pickle")
+                    ):
                         self.link = f"mt:{self.link}"
                     await self.is_token_exists(self.link, "dl")
         elif self.link == "rcl":
@@ -320,13 +324,17 @@ class TaskConfig:
                 raise ValueError("No Upload Destination!")
             if self.up_dest not in ["rcl", "gdl"]:
                 if is_gdrive_id(self.up_dest):
-                    if not self.up_dest.startswith(
-                        ("mt:", "tp:", "sa:")
-                    ) and self.user_dict.get("USER_TOKENS", False):
+                    if (
+                        not self.up_dest.startswith(("mt:", "tp:", "sa:"))
+                        and self.user_dict.get("USER_TOKENS", False)
+                        and ospath.exists(f"tokens/{self.user_id}.pickle")
+                    ):
                         self.up_dest = f"mt:{self.up_dest}"
                 elif is_rclone_path(self.up_dest):
-                    if not self.up_dest.startswith("mt:") and self.user_dict.get(
-                        "USER_TOKENS", False
+                    if (
+                        not self.up_dest.startswith("mt:")
+                        and self.user_dict.get("USER_TOKENS", False)
+                        and ospath.exists(f"rclone/{self.user_id}.conf")
                     ):
                         self.up_dest = f"mt:{self.up_dest}"
                     self.up_dest = self.up_dest.strip("/")
